@@ -1,46 +1,84 @@
-const request = require("supertest");
+const supertest = require("supertest");
 const app = require("./../server");
+const request = supertest("localhost:5000");
+
+beforeAll((done) => {
+  done();
+});
+
+afterAll((done) => {
+  done();
+});
 
 describe("WordCount", () => {
   describe(".getFileWordCounts", () => {
-    it("should return 400 if no file is uploaded", async () => {
-      const res = await request(app).post("/upload").send({ files: null });
-      files.file.name;
-      expect(res.status).toEqual(400);
+    it("returns an error if the the file is not .txt, along with a message informing the reason", function (done) {
+      request
+        .post("/upload")
+        .attach("file", __dirname + "/sampleData//nonTextFile.jpg")
+        .end(function (err, res) {
+          if (err) {
+            console.log(err);
+          } else {
+            expect(res.status).toEqual(400);
+            expect(res.text).toEqual('{"msg":"Please, select a .txt file"}');
+          }
+          done();
+        });
     });
 
-    it("should return 400 if no file the file is not .txt", async () => {
-      const file = {
-        name: "nontextfile.png",
-      };
-
-      const res = await request(app).post("/upload").send({ files: file });
-      expect(res.status).toEqual(400);
+    it("returns an error if the file is larger than 10MB, along with a message informing the reason", function (done) {
+      request
+        .post("/upload")
+        .attach("file", __dirname + "/sampleData/largerThan10MB.txt")
+        .end(function (err, res) {
+          if (err) {
+            console.log(err);
+          } else {
+            expect(res.status).toEqual(400);
+            expect(res.text).toEqual(
+              '{"msg":"You can upload a .txt file up to 10mb"}'
+            );
+          }
+          done();
+        });
     });
 
-    it("should return 400 if no file the file is larger than 10MB", async () => {
-      const file = {
-        size: 10000001,
-      };
-      const res = await request(app).post("/upload").send({ files: file });
-
-      expect(res.status).toEqual(400);
+    it("sucessfully counts the words of a file with 7 words", function (done) {
+      request
+        .post("/upload")
+        .attach("file", __dirname + "/sampleData/validFileWith7Words.txt")
+        .end(function (err, res) {
+          if (err) {
+            console.log(err);
+          } else {
+            expect(res.status).toEqual(200);
+            expect(res.text).toEqual(
+              '{"fileName":"validFileWith7Words.txt","wordTotalCount":7,"eachWordCount":"{\\"wordcount\\":1\\n\\"content\\":1\\n\\"sample\\":1\\n\\"for\\":1\\n\\"test\\":3}"}'
+            );
+          }
+          done();
+        });
     });
 
-    it("should return the word counts for a valid file", async () => {
-      const fileContent = "wordcount content sample for test test test";
-      const file = {
-        size: 10000,
-        name: "sample.txt",
-        data: Buffer.from(fileContent, "utf-8"),
-      };
-      const res = await request(app).post("/upload").send({ files: file });
-
-      expect(res.body).toEqual({
-        fileName: file.name,
-        wordTotalCount: 7,
-        eachWordCount: '"wordcount":1 "content":1 "sample":1 "for":1 "test":3"',
-      });
+    it("sucessfully counts the words of a file with 20 words, that starts with a space, and has double spaces", function (done) {
+      request
+        .post("/upload")
+        .attach(
+          "file",
+          __dirname + "/sampleData/fileWith20wordsAndDoubleSpaces.txt"
+        )
+        .end(function (err, res) {
+          if (err) {
+            console.log(err);
+          } else {
+            expect(res.status).toEqual(200);
+            expect(res.text).toEqual(
+              '{"fileName":"fileWith20wordsAndDoubleSpaces.txt","wordTotalCount":20,"eachWordCount":"{\\"word\\":20}"}'
+            );
+          }
+          done();
+        });
     });
   });
 });
